@@ -4,7 +4,9 @@ author: "Jarrett Glass"
 format: html
 ---
 
-```Note: This is assignment 09, but the first part of it will be brought in from assignment 08.```
+`Note: This is assignment 09, but the first part of it will be brought in from assignment 08.`
+
+[Skip to the new content for Assignment 09](#assignment-9)
 
 ### Read in the Data
 
@@ -23,28 +25,28 @@ df <- readr::read_csv("SeoulBikeData.csv",
 
 The following steps will be taken to explore this data set:
 
-1. Check for "missingness" - in this case, just provide a count of how many missing values there are per variable.
+1.  Check for "missingness" - in this case, just provide a count of how many missing values there are per variable.
 
 ```{r}
 df |> 
   summarize(across(everything(), ~sum(is.na(.))))
 ```
 
-  There are no missing values, apparently, for any variable in this data set.
+There are no missing values, apparently, for any variable in this data set.
 
-2. check the column types and values within columns to make sure they make sense -- e.g., should a column be numeric but contains categories?
+2.  check the column types and values within columns to make sure they make sense -- e.g., should a column be numeric but contains categories?
 
 ```{r}
 str(df)
 ```
 
-  The only column that is "mismatched" between contents and Type is the Date column, which will be changed next:
+The only column that is "mismatched" between contents and Type is the Date column, which will be changed next:
 
-3. Convert `Date` into an actual Date if applicable.
+3.  Convert `Date` into an actual Date if applicable.
 
-4. Turn character variables `Seasons`, `Holiday`, and `Functioning Day` into factors.
+4.  Turn character variables `Seasons`, `Holiday`, and `Functioning Day` into factors.
 
-5. Rename all variables to have easy-to-use names.
+5.  Rename all variables to have easy-to-use names.
 
 ```{r}
 # Perform actions for steps 3, 4, and 5 at once:
@@ -55,7 +57,7 @@ df <- df |>
 df
 ```
 
-6. Create summary statistics related to the bike rental count. Subset the data especially on the `Functioning Day` variable.
+6.  Create summary statistics related to the bike rental count. Subset the data especially on the `Functioning Day` variable.
 
 ```{r}
 # Summary statistics on bike rental account.
@@ -93,11 +95,11 @@ df <- df |>
   filter(functioning_day == "Yes")
 ```
 
-7. Summarize across the hours so each day only has one observation associated with it.
+7.  Summarize across the hours so each day only has one observation associated with it.
 
-+ For example, `group_by(date, seasons, holiday)` variables; and obtain the sums of the `bike_count`, `rainfall`, and `snowfall` variables.
+-   For example, `group_by(date, seasons, holiday)` variables; and obtain the sums of the `bike_count`, `rainfall`, and `snowfall` variables.
 
-+ Find the mean of all weather-related variables.
+-   Find the mean of all weather-related variables.
 
 ```{r}
 # Obtain the sums of `rented_bike_count`, `rainfall`, and `snowfall` for each date.
@@ -112,7 +114,7 @@ data <- df |>
 data
 ```
 
-8. Recreate basic summary stats and then create some plots to explore relationships. Report correlation between the numeric variables as well.
+8.  Recreate basic summary stats and then create some plots to explore relationships. Report correlation between the numeric variables as well.
 
 This table provides the average details *per day*. The summary statistics of **bike rentals** for this subset are:
 
@@ -126,7 +128,7 @@ data |>
 
 Using functions from `tidymodels` to create a `75/25` training/test data split. Use the `strata` argument to stratify split on `seasons`.
 
-+ On the TRAINING set, create 10-fold CV split.
+-   On the TRAINING set, create 10-fold CV split.
 
 ```{r}
 library(tidymodels)
@@ -140,11 +142,11 @@ bike_test <- testing(bike_split)
 
 #### For the 1st recipe:
 
-* Ignore the Date variable for modeling, but use it to create a weekday/weekend (factor) variable.
+-   Ignore the Date variable for modeling, but use it to create a weekday/weekend (factor) variable.
 
-* Standardize the numeric variables since their scales are pretty different.
+-   Standardize the numeric variables since their scales are pretty different.
 
-* Create dummy variables for the seasons, holiday, and our new day type variable
+-   Create dummy variables for the seasons, holiday, and our new day type variable
 
 ```{r}
 recipe.1 <- recipe(rented_bike_count_sum ~ ., data=bike_train) |>
@@ -158,9 +160,9 @@ recipe.1
 
 #### For the 2nd recipe:
 
-* Do the same steps as above.
+-   Do the same steps as above.
 
-* Add in interactions between seasons and holiday, seasons and temp, temp and rainfall. For the seasons interactions, you can use starts_with() to create the proper interactions.
+-   Add in interactions between seasons and holiday, seasons and temp, temp and rainfall. For the seasons interactions, you can use starts_with() to create the proper interactions.
 
 ```{r}
 recipe.2 <- recipe(rented_bike_count_sum ~ ., data=bike_train) |>
@@ -178,9 +180,9 @@ recipe.2
 
 #### For the 3rd recipe:
 
-* Do the same as the 2nd recipe.
+-   Do the same as the 2nd recipe.
 
-* Add in quadratic terms for each numeric predictor
+-   Add in quadratic terms for each numeric predictor
 
 ```{r}
 recipe.3 <- recipe(rented_bike_count_sum ~ ., data=bike_train) |>
@@ -264,28 +266,149 @@ coef_table <- full_training |>
 coef_table
 ```
 
----
+------------------------------------------------------------------------
 
-```This ends the repeated section from Homework 08. This point further includes the new additions for Homework 09.```
+`This ends the repeated section from Homework 08. This point further includes the new additions for Homework 09.`
 
-## To Do:
+## To Do: {#assignment-9}
 
-Adding to this documentation, the first recipe from above (using no quadratics or interactions) should be evaluated using:
+#### Adding to this documentation, the first recipe from above (using no quadratics or interactions) should be modeled using:
 
-+ a (tuned) LASSO model 
+-   a (tuned) LASSO model
 
-+ a (tuned) Regression Tree model
+-   a (tuned) Regression Tree model
 
-+ a (tuned) Bagged Tree model
+-   a (tuned) Bagged Tree model
 
-+ a (tuned) Random Forest model
+-   a (tuned) Random Forest model
 
 Each model should be fit and tuned on the training set, and the best model from each family of models should be fit to the training data set and used to see how well it predicts the test set. **All final models (including best MLR from Assignment 08) should be compared using both RMSE and MAE.**
 
-- For LASSO and MLR, report final coefficient table.
+-   For LASSO and MLR, report final coefficient table.
 
-- For the regression tree model, give a plot of the final fit.
+-   For the regression tree model, give a plot of the final fit.
 
-- For the bagged tree and random forest models, produce a variable importance plot.
+-   For the bagged tree and random forest models, produce a variable importance plot.
 
 **Find the overall best model, and fit this to the entire data set.**
+
+---
+
+Taking from above, the first recipe (`recipe.1`) will be modeled with the various modalities outlined.
+
+The first modeled procedure will be the LASSO method.
+
+```{r}
+# First method: LASSO. Establish with recipe.1 and the GLMNET engine.
+LASSO_wkfl <- workflow() |>
+  add_recipe(recipe.1) |>
+  add_model(linear_reg(penalty=tune(), mixture=1) |> set_engine("glmnet"))
+
+# Generate the Grid of model fits on the 10-fold CV variable.
+LASSO_grid <- LASSO_wkfl |> 
+  tune_grid(resamples = bike_train_10fold,
+            grid=grid_regular(penalty(), levels=200))
+LASSO_grid
+
+# The lowest RMSE is
+LASSO_lowest_rmse <- LASSO_grid |>
+  select_best(metric="rmse")
+LASSO_lowest_rmse
+
+# Fitting this best-tuned model on the training set,
+LASSO_final <- LASSO_wkfl |>
+  finalize_workflow(LASSO_lowest_rmse) |>
+  fit(bike_train)
+
+# Running the LASSO model on the Test set
+LASSO_test_metrics <- LASSO_wkfl |>
+  finalize_workflow(LASSO_lowest_rmse) |>
+  last_fit(bike_split) |>
+  collect_metrics()
+LASSO_test_metrics
+```
+
+The second model to be evaluated is the Regression Tree model.
+
+```{r}
+# Establish the Regression Tree model using recipe.1:
+library(tree)
+reg_tree_wkfl <- workflow() |>
+  add_recipe(recipe.1) |>
+  add_model(decision_tree(tree_depth = tune(),
+                          min_n=20,
+                          cost_complexity = tune()) |>
+              set_engine("rpart") |>
+              set_mode("regression"))
+
+# Creation of the tuning grid
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), levels = c(10, 5))
+
+# Tune these by fitting to the CV-Folds
+tree_fits <- tree_wfkl |>
+  tune_grid(resamples=bike_train_10fold, grid=tree_grid)
+tree_fits |> collect_metrics()
+
+# The optimum tuning parameter
+tree_best <- select_best(tree_fits, metric="rmse")
+tree_best
+
+# Fit the final model on the entire training set
+tree_final_fit <- tree_wkfl |>
+  finalize_workflow(tree_best) |>
+  last_fit(bike_split)
+tree_final_fit |>
+  collect_metrics()
+```
+
+The third model is the Bagged Tree Model.
+
+```{r}
+library(baguette)
+bag_wkfl <- workflow() |>
+  add_recipe(recipe.1) |>
+  add_model(bag_tree(tree_depth=5, min_n=10, cost_complexity=tune()) |>
+              set_engine("rpart") |>
+              set_mode("classification"))
+
+# Fit this workflow to our 10-fold CV fits
+bag_fit <- bag_wkfl |>
+  tune_grid(resamples=bike_train_10fold,
+            grid=grid_regular(cost_complexity(), levels=15),
+            metrics=metric_set(accuracy, mn_log_loss))
+
+# The best tuning parameter from this 10-fold CV fit
+bag_best <- select_best(bag_fit, metric="mn_log_loss")
+bag_best
+
+# Fit the entire training set on this tuning parameter
+bag_final_fit <- bag_wkfl |>
+  finalize_workflow(bag_best) |>
+  last_fit(bike_split, metrics=metric_set(accuracy, mn_log_loss))
+
+# Then to run this on the test set?
+
+```
+
+Finally, a tuned random forest.
+
+```{r}
+rf_wkfl <- workflow() |>
+  add_recipe(recipe.1) |>
+  add_model(rand_forest(mtry = tune()) |>
+              set_engine("ranger") |>
+              set_mode("classification"))
+
+# Fit the model to the CV folds
+
+```
+
+
+
+```{r}
+# Regression Tree Model - plot of the final fit
+tree_final_model <- extract_workflow(tree_final_fit)
+tree_final_model |>
+  extract_fit_engine() |>
+  rpart.plot::rpart.plot(roundint=FALSE)
+```
