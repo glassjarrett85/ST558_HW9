@@ -390,10 +390,11 @@ bag_final_fit |> collect_metrics()
 Finally, a tuned random forest.
 
 ```{r}
+library(ranger)
 rf_wkfl <- workflow() |>
   add_recipe(recipe.1) |>
-  add_model(rand_forest(mtry = tune(), trees=1000) |>
-              set_engine("ranger") |>
+  add_model(rand_forest(mtry = tune(), trees=500) |>
+              set_engine("ranger", importance="permutation") |>
               set_mode("regression"))
 
 # Fit the model to the CV folds
@@ -407,6 +408,11 @@ rf_fit |>
   collect_metrics() |>
   filter(.metric == "rmse") |>
   arrange(mean)
+
+# Select the best entry
+best_mtry <- rf_fit |>
+  select_best(metric="rmse") |>
+  pull(mtry)
 
 # Get the best tuning parameter and refit on the entire training set
 rf_final_fit <- rf_wkfl |>
@@ -430,10 +436,7 @@ The final coefficient tables, utilizing the same coefficient table from Assignme
 
 ```{r}
 # MLR, From assignment 08
-rec1_wfl |> 
-  last_fit(split=bike_split) |>
-  extract_fit_parsnip() |>
-  tidy()
+coef_table
 
 # The LASSO method
 LASSO_wkfl |>
@@ -451,15 +454,6 @@ tree_final_model |>
 # Next, the variable importance plot for the bagged tree model:
 bag_final_model <- extract_fit_engine(bag_final_fit)
 bag_final_model$imp |>
-  mutate(term=factor(term, levels=term)) |>
-  ggplot(aes(x=term, y=value)) +
-  geom_bar(stat="identity") +
-  coord_flip()
-
-
-# Finally, the variable importance plot for the random forest model:
-rf_final_model <- extract_fit_engine(rf_final_fit)
-rf_final_model$imp |>
   mutate(term=factor(term, levels=term)) |>
   ggplot(aes(x=term, y=value)) +
   geom_bar(stat="identity") +
