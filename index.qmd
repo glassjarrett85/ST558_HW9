@@ -131,6 +131,9 @@ Using functions from `tidymodels` to create a `75/25` training/test data split. 
 -   On the TRAINING set, create 10-fold CV split.
 
 ```{r}
+#| warning: false
+#| message: false 
+
 library(tidymodels)
 
 bike_split <- initial_split(data=data, prop=0.75, strata=seasons)
@@ -150,11 +153,12 @@ bike_test <- testing(bike_split)
 
 ```{r}
 recipe.1 <- recipe(rented_bike_count_sum ~ ., data=bike_train) |>
-  step_date(date, features="dow") |>
+  step_date(date, features=c("dow")) |>
   step_mutate(daytype = factor(if_else(date_dow %in% c("Sat", "Sun"), "Weekend", "Weekday"))) |>
-  step_normalize(all_numeric()) |>
+  step_rm(date, date_dow) |>
   step_dummy(seasons, holiday, daytype) |>
-  step_rm(date_dow)
+  step_normalize(all_numeric())  
+
 recipe.1
 ```
 
@@ -282,15 +286,7 @@ coef_table
 
 -   a (tuned) Random Forest model
 
-Each model should be fit and tuned on the training set, and the best model from each family of models should be fit to the training data set and used to see how well it predicts the test set. **All final models (including best MLR from Assignment 08) should be compared using both RMSE and MAE.**
-
--   For LASSO and MLR, report final coefficient table.
-
--   For the regression tree model, give a plot of the final fit.
-
--   For the bagged tree and random forest models, produce a variable importance plot.
-
-**Find the overall best model, and fit this to the entire data set.**
+Each model should be fit and tuned on the training set, and the best model from each family of models should be fit to the training data set and used to see how well it predicts the test set. 
 
 ---
 
@@ -302,7 +298,8 @@ The first modeled procedure will be the LASSO method.
 # First method: LASSO. Establish with recipe.1 and the GLMNET engine.
 LASSO_wkfl <- workflow() |>
   add_recipe(recipe.1) |>
-  add_model(linear_reg(penalty=tune(), mixture=1) |> set_engine("glmnet"))
+  add_model(linear_reg(penalty=tune(), mixture=1) |> 
+              set_engine("glmnet"))
 
 # Generate the Grid of model fits on the 10-fold CV variable.
 LASSO_grid <- LASSO_wkfl |> 
@@ -333,7 +330,7 @@ The second model to be evaluated is the Regression Tree model.
 ```{r}
 # Establish the Regression Tree model using recipe.1:
 library(tree)
-reg_tree_wkfl <- workflow() |>
+tree_wkfl <- workflow() |>
   add_recipe(recipe.1) |>
   add_model(decision_tree(tree_depth = tune(),
                           min_n=20,
@@ -345,7 +342,7 @@ reg_tree_wkfl <- workflow() |>
 tree_grid <- grid_regular(cost_complexity(), tree_depth(), levels = c(10, 5))
 
 # Tune these by fitting to the CV-Folds
-tree_fits <- tree_wfkl |>
+tree_fits <- tree_wkfl |>
   tune_grid(resamples=bike_train_10fold, grid=tree_grid)
 tree_fits |> collect_metrics()
 
@@ -369,25 +366,25 @@ bag_wkfl <- workflow() |>
   add_recipe(recipe.1) |>
   add_model(bag_tree(tree_depth=5, min_n=10, cost_complexity=tune()) |>
               set_engine("rpart") |>
-              set_mode("classification"))
+              set_mode("regression"))
 
 # Fit this workflow to our 10-fold CV fits
 bag_fit <- bag_wkfl |>
   tune_grid(resamples=bike_train_10fold,
             grid=grid_regular(cost_complexity(), levels=15),
-            metrics=metric_set(accuracy, mn_log_loss))
+            metrics=metric_set(rmse, rsq, mae))
 
 # The best tuning parameter from this 10-fold CV fit
-bag_best <- select_best(bag_fit, metric="mn_log_loss")
+bag_best <- select_best(bag_fit, metric="rmse")
 bag_best
 
 # Fit the entire training set on this tuning parameter
 bag_final_fit <- bag_wkfl |>
   finalize_workflow(bag_best) |>
-  last_fit(bike_split, metrics=metric_set(accuracy, mn_log_loss))
+  last_fit(bike_split, metrics=metric_set(rmse, rsq, mae))
 
-# Then to run this on the test set?
-
+# The final metrics for this model
+bag_final_fit |> collect_metrics()
 ```
 
 Finally, a tuned random forest.
@@ -395,20 +392,76 @@ Finally, a tuned random forest.
 ```{r}
 rf_wkfl <- workflow() |>
   add_recipe(recipe.1) |>
-  add_model(rand_forest(mtry = tune()) |>
+  add_model(rand_forest(mtry = tune(), trees=1000) |>
               set_engine("ranger") |>
-              set_mode("classification"))
+              set_mode("regression"))
 
 # Fit the model to the CV folds
+rf_fit <- rf_wkfl |>
+  tune_grid(resamples = bike_train_10fold,
+            grid=7,
+            metrics=metric_set(rmse, rsq, mae))
 
+# The metrics across the folds:
+rf_fit |> 
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+
+# Get the best tuning parameter and refit on the entire training set
+rf_final_fit <- rf_wkfl |>
+  finalize_workflow(select_best(rf_fit, metric="rmse")) |>
+  last_fit(bike_split, metrics=metric_set(rmse, rsq, mae))
+rf_final_fit |> collect_metrics()
 ```
+---
 
+#### All final models (including best MLR from Assignment 08) should be compared using both RMSE and MAE.
 
+-   For LASSO and MLR, report final coefficient table.
+
+-   For the regression tree model, give a plot of the final fit.
+
+-   For the bagged tree and random forest models, produce a variable importance plot.
+
+**Find the overall best model, and fit this to the entire data set.**
+
+The final coefficient tables, utilizing the same coefficient table from Assignment 08 and replicating for the LASSO method:
 
 ```{r}
+# MLR, From assignment 08
+rec1_wfl |> 
+  last_fit(split=bike_split) |>
+  extract_fit_parsnip() |>
+  tidy()
+
+# The LASSO method
+LASSO_wkfl |>
+  finalize_workflow(LASSO_lowest_rmse) |>
+  fit(bike_train) |>
+  extract_fit_parsnip() |>
+  tidy()
+
 # Regression Tree Model - plot of the final fit
 tree_final_model <- extract_workflow(tree_final_fit)
 tree_final_model |>
   extract_fit_engine() |>
   rpart.plot::rpart.plot(roundint=FALSE)
+
+# Next, the variable importance plot for the bagged tree model:
+bag_final_model <- extract_fit_engine(bag_final_fit)
+bag_final_model$imp |>
+  mutate(term=factor(term, levels=term)) |>
+  ggplot(aes(x=term, y=value)) +
+  geom_bar(stat="identity") +
+  coord_flip()
+
+
+# Finally, the variable importance plot for the random forest model:
+rf_final_model <- extract_fit_engine(rf_final_fit)
+rf_final_model$imp |>
+  mutate(term=factor(term, levels=term)) |>
+  ggplot(aes(x=term, y=value)) +
+  geom_bar(stat="identity") +
+  coord_flip()
 ```
